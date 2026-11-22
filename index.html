@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>75% Attendance Calculator & Predictor</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Range Slider Styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 8px;
+            border-radius: 999px;
+            background: #e2e8f0;
+        }
+        .dark input[type="range"]::-webkit-slider-runnable-track {
+            background: #1e293b;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #4f46e5;
+            border: 3px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(79, 70, 229, 0.4);
+            margin-top: -6px;
+            transition: transform 0.15s ease;
+        }
+        .dark input[type="range"]::-webkit-slider-thumb {
+            border-color: #0f172a;
+            background: #6366f1;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.12);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 font-sans antialiased transition-colors duration-200 selection:bg-brand-500 selection:text-white">
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-600 to-violet-600 text-white flex items-center justify-center shadow-md shadow-brand-500/20">
+                    <i data-lucide="calculator" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">AttendPulse</h1>
+                        <span class="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300 border border-brand-200 dark:border-brand-800">75% Predictor</span>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Smart Bunk & Attendance Forecast Engine</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="loadDemoScenario()" class="px-3 py-1.5 text-xs font-medium rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors flex items-center gap-1.5">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5 text-brand-500"></i>
+                    <span>Sample Data</span>
+                </button>
+                <button onclick="toggleTheme()" title="Toggle Theme" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors">
+                    <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
+                    <i data-lucide="sun" class="w-4 h-4 block dark:hidden"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-8">
+
+        <!-- Top Grid: Calculator Inputs (Left) + Live Prediction Dashboard (Right) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+            <!-- LEFT COLUMN: INPUTS & CONFIGURATION (5 Cols) -->
+            <section class="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
+                
+                <!-- Mode Switcher Tabs -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Input Method</label>
+                    <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl">
+                        <button type="button" id="tab-percentage" onclick="setInputMode('percentage')" class="py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm">
+                            <i data-lucide="percent" class="w-3.5 h-3.5 text-brand-500"></i>
+                            By Current %
+                        </button>
+                        <button type="button" id="tab-count" onclick="setInputMode('count')" class="py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                            <i data-lucide="hash" class="w-3.5 h-3.5"></i>
+                            By Attended Count
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Unit Mode Toggle (Classes vs Days + Multiplier) -->
+                <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/70 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="calendar-range" class="w-3.5 h-3.5 text-brand-500"></i>
+                            Counting Unit
+                        </span>
+                        <div class="inline-flex rounded-lg bg-slate-200/70 dark:bg-slate-900 p-0.5 text-xs font-medium">
+                            <button type="button" id="unit-classes" onclick="setUnitMode('classes')" class="px-2.5 py-1 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm transition-all">Classes</button>
+                            <button type="button" id="unit-days" onclick="setUnitMode('days')" class="px-2.5 py-1 rounded-md text-slate-600 dark:text-slate-400 transition-all">Days</button>
+                        </div>
+                    </div>
+
+                    <!-- Classes per Day Multiplier (Visible when Days mode is active) -->
+                    <div id="multiplier-box" class="hidden pt-2 border-t border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between gap-3">
+                        <label for="classes-per-day" class="text-xs text-slate-600 dark:text-slate-400">Avg. classes per day:</label>
+                        <input type="number" id="classes-per-day" value="6" min="1" max="15" oninput="recalculate()" class="w-20 px-2.5 py-1 text-right font-mono text-sm font-semibold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <!-- Dynamic Inputs -->
+                <div class="space-y-4">
+                    <!-- MODE A: Current Percentage -->
+                    <div id="input-group-percentage" class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label for="current-pct" class="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Current Attendance (%)</label>
+                            <label class="inline-flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 cursor-pointer select-none">
+                                <input type="checkbox" id="round-attended" checked onchange="recalculate()" class="rounded text-brand-600 focus:ring-brand-500">
+                                <span>Round attended count</span>
+                            </label>
+                        </div>
+                        <div class="relative">
+                            <input type="number" id="current-pct" value="68" min="0" max="100" step="0.01" oninput="recalculate()" class="w-full pl-4 pr-10 py-2.5 font-mono text-base font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <span class="absolute right-3.5 top-1/2 -translate-y-1/2 font-mono text-sm font-bold text-slate-400">%</span>
+                        </div>
+                        <p id="est-attended-hint" class="text-xs text-brand-600 dark:text-brand-400 font-medium flex items-center gap-1">
+                            <i data-lucide="info" class="w-3.5 h-3.5"></i>
+                            <span>Estimated attended so far: <strong class="font-mono">34</strong> classes</span>
+                        </p>
+                    </div>
+
+                    <!-- MODE B: Attended Count -->
+                    <div id="input-group-count" class="hidden space-y-2">
+                        <label for="attended-count" id="label-attended" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Classes Attended So Far</label>
+                        <input type="number" id="attended-count" value="34" min="0" oninput="recalculate()" class="w-full px-4 py-2.5 font-mono text-base font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+
+                    <!-- Conducted So Far & Remaining -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="conducted-count" id="label-conducted" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">Classes Held So Far</label>
+                            <input type="number" id="conducted-count" value="50" min="1" oninput="recalculate()" class="w-full px-3.5 py-2.5 font-mono text-base font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+                        <div>
+                            <label for="remaining-count" id="label-remaining" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">Remaining Classes</label>
+                            <input type="number" id="remaining-count" value="30" min="0" oninput="recalculate()" class="w-full px-3.5 py-2.5 font-mono text-base font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Target Percentage Selector -->
+                <div class="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <label for="target-pct" class="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Target Requirement</label>
+                        <div class="flex items-center gap-1">
+                            <input type="number" id="target-pct" value="75" min="1" max="100" step="0.5" oninput="syncTargetFromInput()" class="w-16 px-2 py-1 text-right font-mono text-sm font-bold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800 rounded-lg focus:outline-none">
+                            <span class="font-mono text-sm font-bold text-brand-600 dark:text-brand-400">%</span>
+                        </div>
+                    </div>
+
+                    <!-- Quick Preset Pills -->
+                    <div class="grid grid-cols-4 gap-2">
+                        <button type="button" onclick="setTargetPreset(65)" class="preset-btn py-1.5 rounded-lg text-xs font-mono font-semibold border border-slate-200 dark:border-slate-700 hover:border-brand-500 transition-colors">65%</button>
+                        <button type="button" onclick="setTargetPreset(75)" class="preset-btn py-1.5 rounded-lg text-xs font-mono font-semibold bg-brand-600 text-white border border-brand-600 shadow-sm transition-colors">75%</button>
+                        <button type="button" onclick="setTargetPreset(80)" class="preset-btn py-1.5 rounded-lg text-xs font-mono font-semibold border border-slate-200 dark:border-slate-700 hover:border-brand-500 transition-colors">80%</button>
+                        <button type="button" onclick="setTargetPreset(85)" class="preset-btn py-1.5 rounded-lg text-xs font-mono font-semibold border border-slate-200 dark:border-slate-700 hover:border-brand-500 transition-colors">85%</button>
+                    </div>
+                </div>
+
+                <!-- Save to Subject Tracker Quick Action -->
+                <div class="pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <form onsubmit="saveCurrentToTracker(event)" class="flex gap-2">
+                        <input type="text" id="subject-name-input" placeholder="Subject name (e.g., Data Structures)" required class="flex-1 px-3.5 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <button type="submit" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-brand-600 dark:hover:bg-brand-500 text-white text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 shrink-0">
+                            <i data-lucide="bookmark-plus" class="w-4 h-4"></i>
+                            <span>Save</span>
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- RIGHT COLUMN: PREDICTION RESULTS & SIMULATOR (7 Cols) -->
+            <section class="lg:col-span-7 space-y-5">
+
+                <!-- Hero Result Card -->
+                <div id="hero-card" class="rounded-2xl p-6 sm:p-7 border transition-all duration-300 bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm">
+                    <!-- Dynamic Status Pill -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <span id="status-badge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                            <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+                            Action Needed
+                        </span>
+                        <span id="current-standing-pill" class="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400">
+                            Current: 68.00%
+                        </span>
+                    </div>
+
+                    <!-- Primary Headline & Sub-message -->
+                    <h2 id="hero-headline" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
+                        Attend <span class="text-brand-600 dark:text-brand-400 font-mono">26</span> out of <span class="font-mono">30</span> remaining classes
+                    </h2>
+                    <p id="hero-subtext" class="text-sm text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
+                        You can afford to miss/bunk at most <strong class="text-slate-900 dark:text-white">4 classes</strong> and still finish right at <strong class="text-slate-900 dark:text-white">75.0%</strong>.
+                    </p>
+
+                    <!-- Key Metrics Trio -->
+                    <div class="grid grid-cols-3 gap-3 mt-6 pt-5 border-t border-slate-200/70 dark:border-slate-800">
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Must Attend</div>
+                            <div id="metric-must-attend" class="text-xl sm:text-2xl font-mono font-extrabold text-brand-600 dark:text-brand-400 mt-0.5">26</div>
+                            <div id="metric-must-sub" class="text-[11px] text-slate-400 mt-0.5">of 30 left</div>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Safe Bunk</div>
+                            <div id="metric-bunk" class="text-xl sm:text-2xl font-mono font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">4</div>
+                            <div id="metric-bunk-sub" class="text-[11px] text-slate-400 mt-0.5">classes buffer</div>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Max Possible</div>
+                            <div id="metric-max-pct" class="text-xl sm:text-2xl font-mono font-extrabold text-slate-900 dark:text-white mt-0.5">80.0%</div>
+                            <div class="text-[11px] text-slate-400 mt-0.5">if 100% attended</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive "What-If" Bunk Simulator -->
+                <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <i data-lucide="sliders-horizontal" class="w-4 h-4 text-brand-500"></i>
+                                Interactive "What-If" Bunk Simulator
+                            </h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Slide to test how many remaining classes you attend vs. miss</p>
+                        </div>
+                        <span id="sim-verdict-badge" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            Safe (75.00%)
+                        </span>
+                    </div>
+
+                    <!-- Slider Control -->
+                    <div class="space-y-2 pt-1">
+                        <div class="flex justify-between text-xs font-medium">
+                            <span>If I attend: <strong id="sim-attend-val" class="font-mono text-brand-600 dark:text-brand-400 text-sm">26</strong> <span id="sim-unit-text">classes</span></span>
+                            <span class="text-slate-500 dark:text-slate-400">Miss/Bunk: <strong id="sim-miss-val" class="font-mono text-slate-800 dark:text-slate-200">4</strong></span>
+                        </div>
+                        <input type="range" id="sim-slider" min="0" max="30" value="26" oninput="updateSimulator()" class="w-full">
+                    </div>
+
+                    <!-- Visual Progress Bar with Target Threshold Marker -->
+                    <div class="pt-2">
+                        <div class="relative h-5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-visible">
+                            <!-- Filled Bar -->
+                            <div id="sim-progress-bar" class="h-full rounded-full bg-emerald-500 transition-all duration-200 flex items-center justify-end pr-2" style="width: 75%">
+                            </div>
+                            <!-- Target Threshold Vertical Line -->
+                            <div id="sim-target-marker" class="absolute -top-1.5 -bottom-1.5 w-0.5 bg-slate-900 dark:bg-white z-10 transition-all duration-200" style="left: 75%">
+                                <span id="sim-target-label" class="absolute -top-5 -translate-x-1/2 text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-900 text-white dark:bg-white dark:text-slate-900">75%</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center mt-2 text-xs">
+                            <span class="text-slate-400 font-mono">0%</span>
+                            <span class="font-semibold text-slate-700 dark:text-slate-200">
+                                Projected Final Attendance: <strong id="sim-final-pct" class="font-mono text-base text-emerald-600 dark:text-emerald-400">75.00%</strong>
+                            </span>
+                            <span class="text-slate-400 font-mono">100%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step-by-Step Formula Breakdown -->
+                <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
+                        <i data-lucide="function-square" class="w-4 h-4 text-brand-500"></i>
+                        Step-by-Step Math Breakdown
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm">
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
+                            <span class="text-slate-500 dark:text-slate-400">1. Attended So Far (A)</span>
+                            <span id="math-attended" class="font-mono font-bold text-slate-900 dark:text-white">34 / 50</span>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
+                            <span class="text-slate-500 dark:text-slate-400">2. Final Total (T + R)</span>
+                            <span id="math-final-total" class="font-mono font-bold text-slate-900 dark:text-white">80</span>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
+                            <span class="text-slate-500 dark:text-slate-400">3. Total Needed for Target</span>
+                            <span id="math-needed-total" class="font-mono font-bold text-brand-600 dark:text-brand-400">⌈0.75 × 80⌉ = 60</span>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
+                            <span class="text-slate-500 dark:text-slate-400">4. Remaining Required (x)</span>
+                            <span id="math-remaining-req" class="font-mono font-bold text-slate-900 dark:text-white">60 - 34 = 26</span>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+        </div>
+
+        <!-- BOTTOM SECTION: MULTI-SUBJECT SAVED TRACKER -->
+        <section class="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <i data-lucide="layers" class="w-5 h-5 text-brand-500"></i>
+                        Multi-Subject Attendance Tracker
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Save multiple subjects from the calculator above to monitor your entire semester at a glance.</p>
+                </div>
+                <button onclick="clearAllSubjects()" id="clear-subjects-btn" class="hidden self-start sm:self-auto px-3 py-1.5 text-xs font-medium rounded-xl text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/50 transition-colors">
+                    Clear All
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            <th class="py-3 px-4">Subject</th>
+                            <th class="py-3 px-4">Current %</th>
+                            <th class="py-3 px-4">Held / Left</th>
+                            <th class="py-3 px-4">Target</th>
+                            <th class="py-3 px-4">Must Attend</th>
+                            <th class="py-3 px-4">Safe Bunk</th>
+                            <th class="py-3 px-4">Status</th>
+                            <th class="py-3 px-4 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subjects-tbody" class="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs sm:text-sm">
+                        <!-- Dynamic subject rows -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State for Subject Tracker -->
+            <div id="subjects-empty" class="py-8 text-center text-slate-500 dark:text-slate-400 text-xs sm:text-sm">
+                No subjects saved yet. Enter a subject name in the calculator panel and click <strong>Save</strong> to track it here.
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Application Logic -->
+    <script>
+        // --- STATE ---
+        const STORAGE_KEYS = {
+            SUBJECTS: 'attendpulse_subjects_v1',
+            THEME: 'attendpulse_theme_v1'
+        };
+
+        let inputMode = 'percentage'; // 'percentage' | 'count'
+        let unitMode = 'classes';     // 'classes' | 'days'
+        let savedSubjects = [];
+
+        // Cached calculation results for the simulator
+        let calcState = {
+            attendedSoFar: 34,
+            conductedTotal: 50,
+            remainingTotal: 30,
+            targetPct: 75,
+            requiredRemaining: 26,
+            isDaysMode: false,
+            multiplier: 1
+        };
+
+        // --- INITIALIZATION ---
+        function init() {
+            // Theme setup
+            const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+
+            // Load saved subjects
+            try {
+                const raw = localStorage.getItem(STORAGE_KEYS.SUBJECTS);
+                if (raw) savedSubjects = JSON.parse(raw);
+            } catch (e) {
+                savedSubjects = [];
+            }
+
+            recalculate();
+            renderSubjectsTable();
+            lucide.createIcons();
+        }
+
+        // --- MODE & UNIT SWITCHERS ---
+        function setInputMode(mode) {
+            inputMode = mode;
+            const pctGroup = document.getElementById('input-group-percentage');
+            const cntGroup = document.getElementById('input-group-count');
+            const tabPct = document.getElementById('tab-percentage');
+            const tabCnt = document.getElementById('tab-count');
+
+            if (mode === 'percentage') {
+                pctGroup.classList.remove('hidden');
+                cntGroup.classList.add('hidden');
+                tabPct.className = "py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm";
+                tabCnt.className = "py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
+            } else {
+                pctGroup.classList.add('hidden');
+                cntGroup.classList.remove('hidden');
+                tabCnt.className = "py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm";
+                tabPct.className = "py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
+            }
+            recalculate();
+        }
+
+        function setUnitMode(unit) {
+            unitMode = unit;
+            const multBox = document.getElementById('multiplier-box');
+            const btnClasses = document.getElementById('unit-classes');
+            const btnDays = document.getElementById('unit-days');
+            const lblAttended = document.getElementById('label-attended');
+            const lblConducted = document.getElementById('label-conducted');
+            const lblRemaining = document.getElementById('label-remaining');
+
+            if (unit === 'days') {
+                multBox.classList.remove('hidden');
+                btnDays.className = "px-2.5 py-1 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm transition-all";
+                btnClasses.className = "px-2.5 py-1 rounded-md text-slate-600 dark:text-slate-400 transition-all";
+                lblAttended.textContent = "Days Attended So Far";
+                lblConducted.textContent = "Days Held So Far";
+                lblRemaining.textContent = "Remaining Days Left";
+            } else {
+                multBox.classList.add('hidden');
+                btnClasses.className = "px-2.5 py-1 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm transition-all";
+                btnDays.className = "px-2.5 py-1 rounded-md text-slate-600 dark:text-slate-400 transition-all";
+                lblAttended.textContent = "Classes Attended So Far";
+                lblConducted.textContent = "Classes Held So Far";
+                lblRemaining.textContent = "Remaining Classes";
+            }
+            recalculate();
+        }
+
+        function setTargetPreset(val) {
+            document.getElementById('target-pct').value = val;
+            updatePresetButtons(val);
+            recalculate();
+        }
+
+        function syncTargetFromInput() {
+            const val = parseFloat(document.getElementById('target-pct').value) || 75;
+            updatePresetButtons(val);
+            recalculate();
+        }
+
+        function updatePresetButtons(activeVal) {
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                const btnVal = parseFloat(btn.textContent);
+                if (btnVal === activeVal) {
+                    btn.className = "preset-btn py-1.5 rounded-lg text-xs font-mono font-semibold bg-brand-600 text-white border border-brand-600 shadow-sm transition-colors";
+                } else {
+                    btn.className = "preset-btn py-1.5 rounded-lg text-xs font-mono font-semibold border border-slate-200 dark:border-slate-700 hover:border-brand-500 transition-colors";
+                }
+            });
+        }
+
+        // --- CORE CALCULATION ENGINE ---
+        function computePrediction({ mode, currentPct, attendedRaw, conductedRaw, remainingRaw, targetPct, roundAttended, multiplier }) {
+            const conducted = Math.max(1, conductedRaw * multiplier);
+            const remaining = Math.max(0, remainingRaw * multiplier);
+            const targetRatio = Math.min(1, Math.max(0.01, targetPct / 100));
+
+            let attended = 0;
+            let actualCurrentPct = 0;
+
+            if (mode === 'percentage') {
+                const clampedPct = Math.min(100, Math.max(0, currentPct));
+                const exactAttended = (clampedPct / 100) * conducted;
+                attended = roundAttended ? Math.round(exactAttended) : Number(exactAttended.toFixed(2));
+                actualCurrentPct = (attended / conducted) * 100;
+            } else {
+                attended = Math.min(conducted, Math.max(0, attendedRaw * multiplier));
+                actualCurrentPct = (attended / conducted) * 100;
+            }
+
+            const finalTotal = conducted + remaining;
+            // Minimum total classes needed to achieve >= targetRatio
+            const totalNeeded = Math.ceil((targetRatio * finalTotal) - 1e-9);
+            const rawRequiredRemaining = totalNeeded - attended;
+
+            const requiredRemaining = Math.max(0, rawRequiredRemaining);
+            const isImpossible = requiredRemaining > remaining;
+            const isAlreadySafe = rawRequiredRemaining <= 0;
+
+            const safeBunk = isImpossible ? 0 : Math.max(0, remaining - requiredRemaining);
+            const maxAchievablePct = finalTotal > 0 ? ((attended + remaining) / finalTotal) * 100 : 0;
+            const projectedIfRequiredPct = finalTotal > 0 ? ((attended + Math.min(remaining, requiredRemaining)) / finalTotal) * 100 : 0;
+
+            return {
+                attended,
+                conducted,
+                remaining,
+                finalTotal,
+                totalNeeded,
+                requiredRemaining,
+                safeBunk,
+                isImpossible,
+                isAlreadySafe,
+                actualCurrentPct,
+                maxAchievablePct,
+                projectedIfRequiredPct,
+                targetPct
+            };
+        }
+
+        function recalculate() {
+            const multiplier = unitMode === 'days' ? Math.max(1, parseInt(document.getElementById('classes-per-day').value) || 1) : 1;
+            const currentPct = parseFloat(document.getElementById('current-pct').value) || 0;
+            const attendedRaw = parseFloat(document.getElementById('attended-count').value) || 0;
+            const conductedRaw = Math.max(1, parseInt(document.getElementById('conducted-count').value) || 1);
+            const remainingRaw = Math.max(0, parseInt(document.getElementById('remaining-count').value) || 0);
+            const targetPct = Math.min(100, Math.max(1, parseFloat(document.getElementById('target-pct').value) || 75));
+            const roundAttended = document.getElementById('round-attended').checked;
+
+            const res = computePrediction({
+                mode: inputMode,
+                currentPct,
+                attendedRaw,
+                conductedRaw,
+                remainingRaw,
+                targetPct,
+                roundAttended,
+                multiplier
+            });
+
+            // Save state for Simulator
+            calcState = {
+                attendedSoFar: res.attended,
+                conductedTotal: res.conducted,
+                remainingTotal: res.remaining,
+                targetPct: res.targetPct,
+                requiredRemaining: res.requiredRemaining,
+                isDaysMode: unitMode === 'days',
+                multiplier
+            };
+
+            // Update Estimated Attended Hint in Percentage Mode
+            const estHint = document.getElementById('est-attended-hint');
+            estHint.innerHTML = `<i data-lucide="info" class="w-3.5 h-3.5"></i><span>Estimated attended so far: <strong class="font-mono">${res.attended}</strong> out of <strong class="font-mono">${res.conducted}</strong> classes</span>`;
+
+            // Update Current Standing Pill
+            document.getElementById('current-standing-pill').textContent = `Current: ${res.actualCurrentPct.toFixed(2)}% (${res.attended}/${res.conducted})`;
+
+            // Update Hero Card Styling & Messaging
+            const heroCard = document.getElementById('hero-card');
+            const badge = document.getElementById('status-badge');
+            const headline = document.getElementById('hero-headline');
+            const subtext = document.getElementById('hero-subtext');
+
+            const daysEquivalentText = (cls) => {
+                if (unitMode !== 'days' || multiplier <= 1) return '';
+                const d = (cls / multiplier).toFixed(1).replace(/\.0$/, '');
+                return ` (~${d} days)`;
+            };
+
+            if (res.isImpossible) {
+                heroCard.className = "rounded-2xl p-6 sm:p-7 border transition-all duration-300 bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/70 shadow-sm";
+                badge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800";
+                badge.innerHTML = `<i data-lucide="x-octagon" class="w-3.5 h-3.5"></i> Target Unreachable`;
+
+                const shortfall = res.requiredRemaining - res.remaining;
+                headline.innerHTML = `Max possible is <span class="text-rose-600 dark:text-rose-400 font-mono">${res.maxAchievablePct.toFixed(2)}%</span>`;
+                subtext.innerHTML = `Even if you attend all <strong class="font-mono">${res.remaining}</strong> remaining classes${daysEquivalentText(res.remaining)}, you will fall short by <strong class="text-rose-600 dark:text-rose-400 font-mono">${shortfall}</strong> classes to reach <strong>${res.targetPct}%</strong>.`;
+            } else if (res.isAlreadySafe) {
+                heroCard.className = "rounded-2xl p-6 sm:p-7 border transition-all duration-300 bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/70 shadow-sm";
+                badge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800";
+                badge.innerHTML = `<i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Safe Zone`;
+
+                headline.innerHTML = `You need <span class="text-emerald-600 dark:text-emerald-400 font-mono">0</span> mandatory classes!`;
+                subtext.innerHTML = `You already have enough attendance! You can safely bunk/miss up to <strong class="text-emerald-600 dark:text-emerald-400 font-mono">${res.safeBunk}</strong> out of <strong class="font-mono">${res.remaining}</strong> remaining classes${daysEquivalentText(res.safeBunk)} and still stay above <strong>${res.targetPct}%</strong>.`;
+            } else {
+                heroCard.className = "rounded-2xl p-6 sm:p-7 border transition-all duration-300 bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm";
+                badge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800";
+                badge.innerHTML = `<i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> Attendance Required`;
+
+                headline.innerHTML = `Attend <span class="text-brand-600 dark:text-brand-400 font-mono">${res.requiredRemaining}</span> out of <span class="font-mono">${res.remaining}</span> remaining classes`;
+                subtext.innerHTML = `That's <strong class="font-mono">${((res.requiredRemaining / (res.remaining || 1)) * 100).toFixed(0)}%</strong> of your remaining schedule${daysEquivalentText(res.requiredRemaining)}. You can afford to miss at most <strong class="text-slate-900 dark:text-white font-mono">${res.safeBunk}</strong> classes to finish at <strong class="font-mono">${res.projectedIfRequiredPct.toFixed(2)}%</strong>.`;
+            }
+
+            // Update Trio Metrics
+            document.getElementById('metric-must-attend').textContent = res.isImpossible ? `${res.remaining}+` : res.requiredRemaining;
+            document.getElementById('metric-must-sub').textContent = `of ${res.remaining} left`;
+            document.getElementById('metric-bunk').textContent = res.safeBunk;
+            document.getElementById('metric-bunk-sub').textContent = res.safeBunk === 1 ? 'class buffer' : 'classes buffer';
+            document.getElementById('metric-max-pct').textContent = `${res.maxAchievablePct.toFixed(1)}%`;
+
+            // Update Math Breakdown
+            document.getElementById('math-attended').textContent = `${res.attended} / ${res.conducted}`;
+            document.getElementById('math-final-total').textContent = `${res.conducted} + ${res.remaining} = ${res.finalTotal}`;
+            document.getElementById('math-needed-total').textContent = `⌈${(res.targetPct / 100).toFixed(2)} × ${res.finalTotal}⌉ = ${res.totalNeeded}`;
+            document.getElementById('math-remaining-req').textContent = `${res.totalNeeded} - ${res.attended} = ${Math.max(0, res.totalNeeded - res.attended)}`;
+
+            // Sync Simulator Slider Bounds & Default Position
+            const simSlider = document.getElementById('sim-slider');
+            simSlider.max = res.remaining;
+            simSlider.value = Math.min(res.remaining, res.requiredRemaining);
+            updateSimulator();
+
+            lucide.createIcons();
+        }
+
+        // --- INTERACTIVE WHAT-IF SIMULATOR ---
+        function updateSimulator() {
+            const simSlider = document.getElementById('sim-slider');
+            const attendSim = parseInt(simSlider.value) || 0;
+            const missSim = Math.max(0, calcState.remainingTotal - attendSim);
+
+            const finalAttended = calcState.attendedSoFar + attendSim;
+            const finalTotal = calcState.conductedTotal + calcState.remainingTotal;
+            const projectedPct = finalTotal > 0 ? (finalAttended / finalTotal) * 100 : 0;
+            const isPassing = projectedPct >= (calcState.targetPct - 1e-9);
+
+            document.getElementById('sim-attend-val').textContent = attendSim;
+            document.getElementById('sim-miss-val').textContent = missSim;
+            document.getElementById('sim-final-pct').textContent = `${projectedPct.toFixed(2)}%`;
+
+            // Update Progress Bar & Target Line
+            const bar = document.getElementById('sim-progress-bar');
+            const marker = document.getElementById('sim-target-marker');
+            const markerLabel = document.getElementById('sim-target-label');
+            const verdictBadge = document.getElementById('sim-verdict-badge');
+            const finalPctEl = document.getElementById('sim-final-pct');
+
+            bar.style.width = `${Math.min(100, Math.max(0, projectedPct))}%`;
+            marker.style.left = `${Math.min(100, Math.max(0, calcState.targetPct))}%`;
+            markerLabel.textContent = `${calcState.targetPct}%`;
+
+            if (isPassing) {
+                bar.className = "h-full rounded-full bg-emerald-500 transition-all duration-150";
+                finalPctEl.className = "font-mono text-base text-emerald-600 dark:text-emerald-400";
+                verdictBadge.className = "px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300";
+                verdictBadge.textContent = `Safe (${projectedPct.toFixed(2)}%)`;
+            } else {
+                bar.className = "h-full rounded-full bg-rose-500 transition-all duration-150";
+                finalPctEl.className = "font-mono text-base text-rose-600 dark:text-rose-400";
+                verdictBadge.className = "px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300";
+                verdictBadge.textContent = `Shortage (${projectedPct.toFixed(2)}%)`;
+            }
+        }
+
+        // --- MULTI-SUBJECT TRACKER ---
+        function saveCurrentToTracker(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('subject-name-input');
+            const name = nameInput.value.trim();
+            if (!name) return;
+
+            const multiplier = unitMode === 'days' ? Math.max(1, parseInt(document.getElementById('classes-per-day').value) || 1) : 1;
+            const currentPct = parseFloat(document.getElementById('current-pct').value) || 0;
+            const attendedRaw = parseFloat(document.getElementById('attended-count').value) || 0;
+            const conductedRaw = Math.max(1, parseInt(document.getElementById('conducted-count').value) || 1);
+            const remainingRaw = Math.max(0, parseInt(document.getElementById('remaining-count').value) || 0);
+            const targetPct = Math.min(100, Math.max(1, parseFloat(document.getElementById('target-pct').value) || 75));
+            const roundAttended = document.getElementById('round-attended').checked;
+
+            const res = computePrediction({
+                mode: inputMode,
+                currentPct,
+                attendedRaw,
+                conductedRaw,
+                remainingRaw,
+                targetPct,
+                roundAttended,
+                multiplier
+            });
+
+            savedSubjects.push({
+                id: Date.now().toString(),
+                name,
+                actualCurrentPct: res.actualCurrentPct,
+                attended: res.attended,
+                conducted: res.conducted,
+                remaining: res.remaining,
+                targetPct: res.targetPct,
+                requiredRemaining: res.requiredRemaining,
+                safeBunk: res.safeBunk,
+                isImpossible: res.isImpossible,
+                isAlreadySafe: res.isAlreadySafe
+            });
+
+            localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(savedSubjects));
+            nameInput.value = '';
+            renderSubjectsTable();
+            showToast(`Saved "${name}" to subject tracker`);
+        }
+
+        function removeSubject(id) {
+            savedSubjects = savedSubjects.filter(s => s.id !== id);
+            localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(savedSubjects));
+            renderSubjectsTable();
+        }
+
+        function clearAllSubjects() {
+            savedSubjects = [];
+            localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(savedSubjects));
+            renderSubjectsTable();
+            showToast("Cleared all saved subjects");
+        }
+
+        function renderSubjectsTable() {
+            const tbody = document.getElementById('subjects-tbody');
+            const emptyState = document.getElementById('subjects-empty');
+            const clearBtn = document.getElementById('clear-subjects-btn');
+
+            if (savedSubjects.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                clearBtn.classList.add('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            clearBtn.classList.remove('hidden');
+
+            tbody.innerHTML = savedSubjects.map(s => {
+                let statusPill = '';
+                if (s.isImpossible) {
+                    statusPill = `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">Unreachable</span>`;
+                } else if (s.isAlreadySafe) {
+                    statusPill = `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Safe</span>`;
+                } else {
+                    statusPill = `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">Attend ${s.requiredRemaining}</span>`;
+                }
+
+                return `
+                    <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                        <td class="py-3 px-4 font-semibold text-slate-900 dark:text-white">${escapeHTML(s.name)}</td>
+                        <td class="py-3 px-4 font-mono">${s.actualCurrentPct.toFixed(1)}%</td>
+                        <td class="py-3 px-4 font-mono text-slate-500 dark:text-slate-400">${s.conducted} held / ${s.remaining} left</td>
+                        <td class="py-3 px-4 font-mono">${s.targetPct}%</td>
+                        <td class="py-3 px-4 font-mono font-bold text-brand-600 dark:text-brand-400">${s.isImpossible ? `${s.remaining}+` : `${s.requiredRemaining} / ${s.remaining}`}</td>
+                        <td class="py-3 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400">${s.safeBunk}</td>
+                        <td class="py-3 px-4">${statusPill}</td>
+                        <td class="py-3 px-4 text-right">
+                            <button onclick="removeSubject('${s.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors" title="Remove">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        // --- UTILITIES ---
+        function loadDemoScenario() {
+            setInputMode('percentage');
+            setUnitMode('classes');
+            document.getElementById('current-pct').value = 66.5;
+            document.getElementById('conducted-count').value = 48;
+            document.getElementById('remaining-count').value = 24;
+            setTargetPreset(75);
+            showToast("Loaded sample semester scenario (66.5% across 48 classes, 24 left)");
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem(STORAGE_KEYS.THEME, isDark ? 'dark' : 'light');
+        }
+
+        function showToast(msg) {
+            const container = document.getElementById('toast-container');
+            const el = document.createElement('div');
+            el.className = "bg-slate-900 dark:bg-slate-800 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs sm:text-sm font-medium transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto border border-slate-700";
+            el.textContent = msg;
+            container.appendChild(el);
+            requestAnimationFrame(() => el.classList.remove('translate-y-2', 'opacity-0'));
+            setTimeout(() => {
+                el.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => el.remove(), 300);
+            }, 3000);
+        }
+
+        function escapeHTML(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
